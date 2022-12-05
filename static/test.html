@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Game Test</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            border: 1px solid black
+        }
+
+        td,
+        th {
+            border: 1px solid black;
+            padding: 5px 10px;
+        }
+
+        ul {
+            margin: 0px;
+            padding-left: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <!--
+
+    router.add_prefix_route("/api/player_join", self.player_join)
+    router.add_prefix_route("/api/player_disconnect", self.player_disconnect)
+    router.add_prefix_route("/api/player_list", self.player_list)
+
+    router.add_prefix_route("/api/lobby_join", self.lobby_join)
+    router.add_prefix_route("/api/lobby_leave", self.lobby_leave)
+    router.add_prefix_route("/api/lobby_list", self.lobby_list)
+
+    router.add_prefix_route("/api/game_start", self.game_start)
+    router.add_prefix_route("/api/game_leave", self.game_leave)
+    router.add_prefix_route("/api/game_list", self.game_list)
+
+    -->
+
+    <h1>Web Game Test</h1>
+
+    <h2>Players</h2>
+    <div id="players"></div>
+
+    <h2>Lobbies</h2>
+    <div id="lobbies"></div>
+
+    <h2>Games</h2>
+    <div id="games"></div>
+
+    <script>
+        function callApi(api) {
+            return fetch(api)
+                .then((resp) => {
+                    return resp.json();
+                })
+                .then((json) => {
+                    console.log(json);
+                    if (json.status === "error") {
+                        throw new Error(json.message);
+                    }
+                    return json;
+                });
+        }
+
+        function loadData(api, elem, formatter) {
+            let div = document.getElementById(elem);
+
+            callApi(api)
+                .catch((error) => {
+                    div.innerText = "API Error: " + error;
+                })
+                .then((json) => {
+                    div.innerHTML = formatter(json);
+                });
+        }
+
+        function buildTable(columns, data) {
+            let table = "<div><table>";
+
+            if (columns) {
+                table += buildTableRow(columns, "th");
+            }
+
+            data.forEach((row) => {
+                table += buildTableRow(row, "td");
+            });
+
+            table += "</table>";
+            table += "</div>"
+            return table;
+        }
+
+        function buildTableRow(data, cellTag) {
+            let row = "<tr>";
+            data.forEach((cell) => {
+                row += "<" + cellTag + ">" + cell + "</" + cellTag + ">";
+            });
+            row += "</tr>";
+
+            return row;
+        }
+
+        function buildList(data) {
+            let list = "<ul>";
+
+            data.forEach((value) => {
+                list += "<li>" + value + "</li>";
+            });
+
+            list += "</ul>";
+            return list;
+        }
+
+        let players = [];
+        let lobbies = [];
+        let games = [];
+        let games_with_names = [];
+
+        function load() {
+            loadData("/api/player_list", "players", (data) => {
+                //players: []
+                //{name: "Bob", lobby: "NumberGuess", game: null}
+                players = data.players.map((player) => {
+                    return player.name;
+                });
+
+                return buildTable(
+                    ["Name", "Lobby", "Game"],
+                    data.players.map((player) => {
+                        return [
+                            player.name,
+                            player.lobby,
+                            player.game
+                        ]
+                    })
+                )
+            });
+
+            loadData("/api/lobby_list", "lobbies", (data) => {
+                //lobbies: []
+                //{name: "NumberGuess", players: ["Aaron"], min_players: 1, max_players: 0, player_count: 1}
+                lobbies = data.lobbies.map((lobby) => {
+                    return lobby.name;
+                });
+
+                return buildTable(
+                    ["Name", "Min Players", "Max Players", "Player Count", "Players"],
+                    data.lobbies.map((lobby) => {
+                        return [
+                            lobby.name,
+                            lobby.min_players,
+                            lobby.max_players,
+                            lobby.player_count,
+                            buildList(lobby.players)
+                        ]
+                    })
+                )
+            });
+
+            loadData("/api/game_list", "games", (data) => {
+                //games: []
+                //{id: "ptcuwh", name: "Number Guess Game", players: ["Aaron"], player_count: 1}
+                games = data.games.map((game) => {
+                    return game.id;
+                });
+                games_with_names = data.games.map((game) => {
+                    return game.id + " (" + game.name + ")";
+                });
+
+                return buildTable(
+                    ["Name", "ID", "Player Count", "Players"],
+                    data.games.map((game) => {
+                        return [
+                            game.name,
+                            game.id,
+                            game.player_count,
+                            buildList(game.players)
+                        ]
+                    })
+                )
+            });
+
+        }
+
+        function addPlayer(player_name) {
+            return callApi("/api/player_join/" + player_name)
+                .catch((error) => {
+                    alert("API Error: " + error);
+                })
+                .then((json) => {
+                    load();
+                });
+        }
+
+        function removePlayer(player_name) {
+            return callApi("/api/player_disconnect/" + player_name)
+                .catch((error) => {
+                    alert("API Error: " + error);
+                })
+                .then((json) => {
+                    load();
+                });
+        }
+
+        function joinLobby(lobby_name, player_name) {
+            return callApi("/api/lobby_join/" + lobby_name + "/" + player_name)
+                .catch((error) => {
+                    alert("API Error: " + error);
+                })
+                .then((json) => {
+                    load();
+                });
+        }
+
+        function leaveLobby(lobby_name, player_name) {
+            return callApi("/api/lobby_leave/" + lobby_name + "/" + player_name)
+                .catch((error) => {
+                    alert("API Error: " + error);
+                })
+                .then((json) => {
+                    load();
+                });
+        }
+
+        function startGame(lobby_name) {
+            return callApi("/api/game_start/" + lobby_name)
+                .catch((error) => {
+                    alert("API Error: " + error);
+                })
+                .then((json) => {
+                    load();
+                });
+        }
+
+        function leaveGame(game_id, player_name) {
+            return callApi("/api/game_leave/" + game_id + "/" + player_name)
+                .catch((error) => {
+                    alert("API Error: " + error);
+                })
+                .then((json) => {
+                    load();
+                });
+        }
+    
+        load();
+    </script>
+</body>
+
+</html>
