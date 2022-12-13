@@ -8,7 +8,7 @@ from gamemanager import GameManager
 from gamemanagerapi import GameManagerApi
 from game_guess import GuessGame
 
-def main():
+async def main():
     logging.info("MAIN starting")
     
     server = Server()
@@ -20,17 +20,37 @@ def main():
     router.add_static_route("", index)
     router.add_static_route("index", index)
     router.add_static_route("test", test)
-    api_router = router.add_sub_router("api/")
     router.add_default_route(default)
+
+    api_router = router.add_sub_router("api/")
+    api_router.add_default_route(api)
 
     game_manager_api = GameManagerApi(game_manager)
     game_manager_api.setup_routes(api_router)
-    api_router.add_default_route(api)
 
     server.connection_handler = router.handle_request
     
-    logging.info("MAIN starting server")
-    asyncio.run(server.start_server())
+    logging.info("MAIN creating tasks")
+    server_task = asyncio.create_task(server.start_server())
+    game_task = asyncio.create_task(game_manager.start_game_loop())
+
+    logging.info("MAIN starting tasks")
+    done, pending = await asyncio.wait(
+        [server_task, game_task], 
+        return_when=asyncio.FIRST_COMPLETED
+    )
+
+    logging.info("MAIN stopping tasks")
+    
+    for task in done:
+        logging.info("MAIN task finished %s" % task)
+    for task in pending:
+        task.cancel()
+        logging.info("MAIN cancel task %s" % task)
+        await task
+        logging.info("MAIN task cancelled %s" % task)
+
+    logging.info("MAIN done")
 
 def index(request: Request, router_context: RouterContext) -> Response:
     return Response(load_static_file("index.html"))
@@ -57,6 +77,6 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG)
 
     try:
-        main()
+        asyncio.run(main())
     except Exception as ex:
         logging.critical("MAIN ERROR fatal error", exc_info=ex)

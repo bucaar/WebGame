@@ -11,7 +11,7 @@ class GameManagerApi:
     def player_join(self, request: Request, router_context: RouterContext) -> Response:
         try:
             path = parse_url_path(router_context.additional)
-            self.game_manager.add_player(path[0])
+            self.game_manager.player_join(path[0])
             return self.build_response(True)
 
         except GameManagerError as ex:
@@ -20,7 +20,7 @@ class GameManagerApi:
     def player_disconnect(self, request: Request, router_context: RouterContext) -> Response:
         try:
             path = parse_url_path(router_context.additional)
-            self.game_manager.remove_player(path[0])
+            self.game_manager.player_disconnect(path[0])
             return self.build_response(True)
 
         except GameManagerError as ex:
@@ -29,8 +29,8 @@ class GameManagerApi:
     def player_list(self, request: Request, router_context: RouterContext) -> Response:
         players = [{
             "name": player.name,
-            "lobby": player.lobby.name if player.lobby else None,
-            "game": player.game.id if player.game else None
+            "lobby": player.lobby_name,
+            "game": player.game_id
         } for player in self.game_manager.players]
 
         return self.build_response(True, extra={
@@ -40,7 +40,7 @@ class GameManagerApi:
     def lobby_join(self, request: Request, router_context: RouterContext) -> Response:
         try:
             path = parse_url_path(router_context.additional)
-            self.game_manager.join_lobby(path[0], path[1])
+            self.game_manager.lobby_join(path[0], path[1])
             return self.build_response(True)
 
         except GameManagerError as ex:
@@ -49,7 +49,7 @@ class GameManagerApi:
     def lobby_leave(self, request: Request, router_context: RouterContext) -> Response:
         try:
             path = parse_url_path(router_context.additional)
-            self.game_manager.leave_lobby(path[0], path[1])
+            self.game_manager.lobby_leave(path[0], path[1])
             return self.build_response(True)
 
         except GameManagerError as ex:
@@ -71,7 +71,7 @@ class GameManagerApi:
     def game_start(self, request: Request, router_context: RouterContext) -> Response:
         try:
             path = parse_url_path(router_context.additional)
-            self.game_manager.start_game(path[0])
+            self.game_manager.game_start(path[0])
             return self.build_response(True)
 
         except GameManagerError as ex:
@@ -80,7 +80,16 @@ class GameManagerApi:
     def game_leave(self, request: Request, router_context: RouterContext) -> Response:
         try:
             path = parse_url_path(router_context.additional)
-            self.game_manager.leave_game(path[0], path[1])
+            self.game_manager.game_leave(path[0], path[1])
+            return self.build_response(True)
+
+        except GameManagerError as ex:
+            return self.build_response(False, str(ex))
+
+    def set_player_output(self, request: Request, router_context: RouterContext) -> Response:
+        try:
+            path = parse_url_path(router_context.additional)
+            self.game_manager.set_player_output(path[0], path[1])
             return self.build_response(True)
 
         except GameManagerError as ex:
@@ -88,11 +97,12 @@ class GameManagerApi:
 
     def game_list(self, request: Request, router_context: RouterContext) -> Response:
         games = [{
-            "id": game.id,
-            "name": game.get_name(),
-            "players": game.players[:],
-            "player_count": len(game.players)
-        } for game in self.game_manager.games]
+            "id": game_state.id,
+            "name": game_state.name,
+            "lobby": game_state.lobby_name,
+            "players": game_state.game.players[:],
+            "player_count": len(game_state.game.players)
+        } for game_state in self.game_manager.games]
 
         return self.build_response(True, extra={
             "games": games
@@ -118,14 +128,20 @@ class GameManagerApi:
         return Response(response, status)
         
     def setup_routes(self, router: Router) -> None:
-        router.add_prefix_route("player_join", self.player_join)
-        router.add_prefix_route("player_disconnect", self.player_disconnect)
-        router.add_prefix_route("player_list", self.player_list)
+        player_router = router.add_sub_router("player/")
+        player_router.add_prefix_route("join", self.player_join)
+        player_router.add_prefix_route("disconnect", self.player_disconnect)
+        player_router.add_prefix_route("list", self.player_list)
 
-        router.add_prefix_route("lobby_join", self.lobby_join)
-        router.add_prefix_route("lobby_leave", self.lobby_leave)
-        router.add_prefix_route("lobby_list", self.lobby_list)
+        lobby_router = router.add_sub_router("lobby/")
+        lobby_router.add_prefix_route("join", self.lobby_join)
+        lobby_router.add_prefix_route("leave", self.lobby_leave)
+        lobby_router.add_prefix_route("list", self.lobby_list)
 
-        router.add_prefix_route("game_start", self.game_start)
-        router.add_prefix_route("game_leave", self.game_leave)
-        router.add_prefix_route("game_list", self.game_list)
+        game_router = router.add_sub_router("game/")
+        game_router.add_prefix_route("start", self.game_start)
+        game_router.add_prefix_route("leave", self.game_leave)
+        game_router.add_prefix_route("list", self.game_list)
+
+        game_router = router.add_sub_router("play/")
+        game_router.add_prefix_route("output", self.set_player_output)

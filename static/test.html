@@ -28,17 +28,17 @@
 <body>
     <!--
 
-    router.add_prefix_route("/api/player_join", self.player_join)
-    router.add_prefix_route("/api/player_disconnect", self.player_disconnect)
-    router.add_prefix_route("/api/player_list", self.player_list)
+    router.add_prefix_route("/api/player/join", self.player_join)
+    router.add_prefix_route("/api/player/disconnect", self.player_disconnect)
+    router.add_prefix_route("/api/player/list", self.player_list)
 
-    router.add_prefix_route("/api/lobby_join", self.lobby_join)
-    router.add_prefix_route("/api/lobby_leave", self.lobby_leave)
-    router.add_prefix_route("/api/lobby_list", self.lobby_list)
+    router.add_prefix_route("/api/lobby/join", self.lobby_join)
+    router.add_prefix_route("/api/lobby/leave", self.lobby_leave)
+    router.add_prefix_route("/api/lobby/list", self.lobby_list)
 
-    router.add_prefix_route("/api/game_start", self.game_start)
-    router.add_prefix_route("/api/game_leave", self.game_leave)
-    router.add_prefix_route("/api/game_list", self.game_list)
+    router.add_prefix_route("/api/game/start", self.game_start)
+    router.add_prefix_route("/api/game/leave", self.game_leave)
+    router.add_prefix_route("/api/game/list", self.game_list)
 
     -->
 
@@ -60,7 +60,6 @@
                     return resp.json();
                 })
                 .then((json) => {
-                    console.log(json);
                     if (json.status === "error") {
                         throw new Error(json.message);
                     }
@@ -123,7 +122,7 @@
         let games_with_names = [];
 
         function load() {
-            loadData("/api/player_list", "players", (data) => {
+            loadData("/api/player/list", "players", (data) => {
                 //players: []
                 //{name: "Bob", lobby: "NumberGuess", game: null}
                 players = data.players.map((player) => {
@@ -142,7 +141,7 @@
                 )
             });
 
-            loadData("/api/lobby_list", "lobbies", (data) => {
+            loadData("/api/lobby/list", "lobbies", (data) => {
                 //lobbies: []
                 //{name: "NumberGuess", players: ["Aaron"], min_players: 1, max_players: 0, player_count: 1}
                 lobbies = data.lobbies.map((lobby) => {
@@ -163,7 +162,7 @@
                 )
             });
 
-            loadData("/api/game_list", "games", (data) => {
+            loadData("/api/game/list", "games", (data) => {
                 //games: []
                 //{id: "ptcuwh", name: "Number Guess Game", players: ["Aaron"], player_count: 1}
                 games = data.games.map((game) => {
@@ -174,11 +173,12 @@
                 });
 
                 return buildTable(
-                    ["Name", "ID", "Player Count", "Players"],
+                    ["Name", "ID", "Lobby", "Player Count", "Players"],
                     data.games.map((game) => {
                         return [
                             game.name,
                             game.id,
+                            game.lobby,
                             game.player_count,
                             buildList(game.players)
                         ]
@@ -188,66 +188,44 @@
 
         }
 
-        function addPlayer(player_name) {
-            return callApi("/api/player_join/" + player_name)
+        function callApiAndReload(api) {
+            return callApi(api)
                 .catch((error) => {
                     alert("API Error: " + error);
                 })
                 .then((json) => {
                     load();
                 });
+        }
+
+        function addPlayer(player_name) {
+            return callApiAndReload("/api/player/join/" + player_name);
         }
 
         function removePlayer(player_name) {
-            return callApi("/api/player_disconnect/" + player_name)
-                .catch((error) => {
-                    alert("API Error: " + error);
-                })
-                .then((json) => {
-                    load();
-                });
+            return callApiAndReload("/api/player/disconnect/" + player_name);
         }
 
         function joinLobby(lobby_name, player_name) {
-            return callApi("/api/lobby_join/" + lobby_name + "/" + player_name)
-                .catch((error) => {
-                    alert("API Error: " + error);
-                })
-                .then((json) => {
-                    load();
-                });
+            return callApiAndReload("/api/lobby/join/" + lobby_name + "/" + player_name);
         }
 
         function leaveLobby(lobby_name, player_name) {
-            return callApi("/api/lobby_leave/" + lobby_name + "/" + player_name)
-                .catch((error) => {
-                    alert("API Error: " + error);
-                })
-                .then((json) => {
-                    load();
-                });
+            return callApiAndReload("/api/lobby/leave/" + lobby_name + "/" + player_name);
         }
 
         function startGame(lobby_name) {
-            return callApi("/api/game_start/" + lobby_name)
-                .catch((error) => {
-                    alert("API Error: " + error);
-                })
-                .then((json) => {
-                    load();
-                });
+            return callApiAndReload("/api/game/start/" + lobby_name);
         }
 
         function leaveGame(game_id, player_name) {
-            return callApi("/api/game_leave/" + game_id + "/" + player_name)
-                .catch((error) => {
-                    alert("API Error: " + error);
-                })
-                .then((json) => {
-                    load();
-                });
+            return callApiAndReload("/api/game/leave/" + game_id + "/" + player_name);
         }
-    
+
+        function setPlayerOutput(player_name, output) {
+            return callApiAndReload("/api/play/output" + player_name + "/" + output);
+        }
+
         load();
     </script>
 </body>

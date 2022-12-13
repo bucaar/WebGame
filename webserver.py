@@ -62,8 +62,8 @@ class Server:
                 if not method:
                     method, path, version = line.split()
                 elif ":" in line:
-                    name, data = line.split(":", 1)
-                    headers[name] = data
+                    header_name, data = line.split(":", 1)
+                    headers[header_name] = data
                 else:
                     logging.warning("WEBSERVER unhandled HTTP line %s" % line)
 
