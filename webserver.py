@@ -10,6 +10,7 @@ class Request:
     path: str
     version: str
     headers: dict[str, str]
+    body: "str | None"
 
 @dataclass
 class Response:
@@ -55,7 +56,7 @@ class Server:
             version = ""
             headers = {}
 
-            async for line in self.read_until_empty(reader, name, self.chunk_size):
+            async for line in self.read_http(reader, name, self.chunk_size):
                 if not line:
                     continue
 
@@ -67,8 +68,10 @@ class Server:
                 else:
                     logging.warning("WEBSERVER unhandled HTTP line %s" % line)
 
+            
+
             logging.info("WEBSERVER handling request from %s: %s %s" % (name, method, path))
-            request = Request(method, path, version, headers)
+            request = Request(method, path, version, headers, body)
             response = self.connection_handler(request)
             if not response:
                 logging.warning("WEBSERVER unhandled request from %s" % name)
@@ -84,7 +87,7 @@ class Server:
     def connection_handler(self, request: Request) -> Response:
         logging.warning("WEBSERVER default connection handler was used. Request: %s %s" % (request.method, request.path))
 
-    async def read_until_empty(self, reader: asyncio.StreamReader, conn_name: str, chunk_size: int) -> AsyncGenerator[str, None]:
+    async def read_http(self, reader: asyncio.StreamReader, conn_name: str, chunk_size: int) -> AsyncGenerator[str, None]:
         try:
             message: str = ""
             EOL = "\r\n"

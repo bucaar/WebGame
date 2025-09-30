@@ -41,7 +41,7 @@ async def main():
     )
 
     logging.info("MAIN stopping tasks")
-    
+
     for task in done:
         logging.info("MAIN task finished %s" % task)
     for task in pending:
